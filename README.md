@@ -1,3 +1,6 @@
+> [!WARNING]  
+> I'm really not sure I'm going to pursue this to completion, I'm publishing this "as is" for now
+
 This is a wip rust rewrite of the ink stroke format code using the following references
 
 - the .NET source code viewer
