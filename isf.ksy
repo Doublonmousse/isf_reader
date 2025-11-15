@@ -271,7 +271,6 @@ types:
         doc: Size in bytes of the full tag draw attr table content
       - id: draw_attributes_list
         type: read_until_draw_attrs(size_total.value)
-      #  doc: TODO, repeat until we get to the size_total.value (in the DRAW ATTRIBUTE element)
   read_until_draw_attrs:
     params:
     - id: n_bytes_total
@@ -290,37 +289,116 @@ types:
         seq:
         - id: size
           type: multibyte_int_decoded
-        - id: drawing_properties
-          type: drawing_properties(size.value)
+        - id: drawing_properties_list
+          type: drawing_properties_list(size.value - size.len)
+          size: size.value - size.len
         instances:
           interm_value:
             value: prev_bytes_left - size.value - size.len
-  drawing_properties:
+  drawing_properties_list:
     params:
     - id: size
       type: u4
+    doc: |
+      Correspond to a call to DrawingAttributeSerializer.DecodeAsISF(strm, guidList, cbDA, attributes)
+      With cbDA corresponding to size here.
+      Each drawing attribute is a list of tags that each update/set a different field.
+      Beware here that we ONLY have the tag and no size indicator so we need to know all tag-> size
+      correspondances correctly and/or jump/skip to the end to preserve the alignment to the next tag.
     seq:
-    - id: tag
-      type: multibyte_int_decoded
-      doc: value for that guid. Here this is unchecked but in practice we should match that tag with the guid (fixed + custom) present
-    - id: drawing_attribute
-      type: 
-        switch-on: tag.value
-        cases:
-          #72: drawing_flags #72-50 so 22 in original index
-          # also got 100 but nothing is said for 100- 50 = 50 ..
-          # should still be known ?
-          _: skip(size - tag.len)
+    - id: drawing_properties
+      type: drawing_property_bounded(size)
+      repeat: eos
+      #type: |
+      #  drawing_property_bounded(_index == 0 ? size : drawing_properties[_index - 1].interm_value)
+      #repeat: until
+      #repeat-until: _.interm_value <= 0
+    types:
+      drawing_property_bounded:
+        params:
+        - id: prev_bytes_left
+          type: u4
+        seq:
+        - id: tag
+          type: u1
+          doc: Pretty sure we are on 1 byte for tags ...
+        - id: drawing_attribute
+          type: 
+            switch-on: tag
+            cases:
+
+              65: roll_rotation
+              72: drawing_flags
+              
+              100: custom_guid_tagged
+              101: custom_guid_tagged
+              102: custom_guid_tagged
+              103: custom_guid_tagged
+              104: custom_guid_tagged
+              105: custom_guid_tagged
+              106: custom_guid_tagged
+              107: custom_guid_tagged
+              108: custom_guid_tagged
+              109: custom_guid_tagged
+              110: custom_guid_tagged
+              111: custom_guid_tagged
+              112: custom_guid_tagged
+              113: custom_guid_tagged
+              114: custom_guid_tagged
+              115: custom_guid_tagged
+              116: custom_guid_tagged
+              117: custom_guid_tagged
+              118: custom_guid_tagged
+              119: custom_guid_tagged
+              120: custom_guid_tagged
+              121: custom_guid_tagged
+              122: custom_guid_tagged
+              123: custom_guid_tagged
+              124: custom_guid_tagged
+              125: custom_guid_tagged
+              126: custom_guid_tagged
+              127: custom_guid_tagged
+
+              _: skip(0) # because we choose to skip 0, we'd be okay unless we trip on the tag
+        instances:
+          interm_value:
+            value: prev_bytes_left - 1 #drawing_attribute # and now we're a little blocked
   skip:
     params:
-    - id: size
+    - id: size_jump
       type: u4
     seq:
     - id: unread
       type: u1
       repeat: expr
-      repeat-expr: size
+      repeat-expr: size_jump
+  roll_rotation:
+    doc: tag 65, extended prop with size from https://source.dot.net/#PresentationCore/MS/Internal/Ink/InkSerializedFormat/ISFTagAndGuidCache.cs,71
+    seq:
+    - id: unread
+      type: u2
+      doc: size of ushort
+  custom_guid_tagged:
+    doc: Corresponds to https://source.dot.net/#PresentationCore/MS/Internal/Ink/InkSerializedFormat/CustomAttributeSerializer.cs,440
+     Starts at 100 included(?) https://source.dot.net/#PresentationCore/MS/Internal/Ink/InkSerializedFormat/ISFTagAndGuidCache.cs,175
+    seq:
+    - id: size
+      type: multibyte_int_decoded
+    - id: unread
+      type: u1
+      repeat: expr
+      repeat-expr: size.value + 1
+      doc: |
+        This corresponds to extended properties, that are encoded/compressed ...We suppose a u1 is added for the compression 
+        header. 
+        For the +1, see
+        https://source.dot.net/#PresentationCore/MS/Internal/Ink/InkSerializedFormat/CustomAttributeSerializer.cs,445
+        We are _fine_ for now because
+        - it is custom guids we may not read or know the content therein
+        - the size is the compressed one so we can jump without having to decompress
   drawing_flags:
+    doc: See https://source.dot.net/#PresentationCore/MS/Internal/Ink/InkSerializedFormat/DrawingAttributeSerializer.cs,446 ?
+      It's not apparent at a first read what all of the bytes actually do (there are more than the flags shown here)
     seq:
     - id: drawing_flag
       type: multibyte_int_decoded
@@ -328,6 +406,21 @@ types:
         Get the int out, and use the masks from 
         https://source.dot.net/#PresentationCore/MS/Internal/Ink/DrawingFlags.cs,6b5b5b1c32977bf7,references
         To know what flags are set
+    instances:
+      fit_to_curve:
+        value: (drawing_flag.value & 0x0001) >0
+        doc: The stroke should be fit to a curve, such as a bezier.
+      subtractive_transparency:
+        value: (drawing_flag.value & 0x0002) > 0
+        doc: |
+          The stroke should be rendered by subtracting its rendering values
+          from those on the screen
+      ignore_pressure:
+        value: (drawing_flag.value & 0x0004) > 0
+        doc: Ignore any stylus pressure information when rendering
+      is_highligher:
+        value: (drawing_flag.value & 0x0100) > 0
+        doc: See 
   da_pen_tip:
     seq:
     - id: pen_tip_type
