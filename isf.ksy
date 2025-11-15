@@ -328,6 +328,7 @@ types:
             cases:
 
               65: roll_rotation
+              68: color_ref
               72: drawing_flags
               
               100: custom_guid_tagged
@@ -420,7 +421,14 @@ types:
         doc: Ignore any stylus pressure information when rendering
       is_highligher:
         value: (drawing_flag.value & 0x0100) > 0
-        doc: See 
+  color_ref:
+    seq:
+    - id: blue
+      type: u1
+    - id: green
+      type: u1
+    - id: red
+      type: u1
   da_pen_tip:
     seq:
     - id: pen_tip_type
