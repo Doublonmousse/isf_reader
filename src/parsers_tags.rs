@@ -19,7 +19,7 @@ pub(crate) fn decode_guid(bytes: [u8; 16]) {
     let ch_list = &bytes[8..];
 
     // print
-    println!("guid : \t{:x}\t{:x}\t{:x}\t{:?}", tag, b1, b2, ch_list);
+    println!("guid : \t{:?}\t{:?}\t{:?}\t{:?}", tag, b1, b2, ch_list);
 
     // parse and check later the use ...
     // to check later when we'd have associated values with this

@@ -24,7 +24,7 @@ fn read_value<R: Read>(stream: &mut BufReader<R>) -> Result<(u64, u64), Error> {
     return Ok((value, bytes_read));
 }
 
-/// reads the mulibytes int and returns both the value and the number
+/// reads the multibytes int and returns both the value and the number
 /// of bytes read
 ///
 /// We have
