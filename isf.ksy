@@ -122,10 +122,15 @@ types:
     - id: compressed_data
       type: u1
       repeat: expr
-      repeat-expr:
+      repeat-expr: cb_stroke.value - cpoints.len
   packed_data:
     doc: This is only used to show the format used for stroke packing
       This is not used in practice in the file
+    params:
+    - id: cb_stroke
+      type: multibyte_int_decoded
+    - id: cpoints
+      type: multibyte_int_decoded 
     seq:
     - id: compression_id
       type: u1
@@ -259,21 +264,36 @@ types:
       - id: size_total
         type: multibyte_int_decoded
         doc: Size in bytes of the full tag draw attr table content
-      - id: unread
-        type: u1
-        repeat: expr
-        repeat-expr: size_total.value
-      #- id: draw_attribute
-      #  type: draw_attribute
+      - id: draw_attributes_list
+        type: read_until_draw_attrs(size_total.value)
       #  doc: TODO, repeat until we get to the size_total.value (in the DRAW ATTRIBUTE element)
-  draw_attribute:
+  read_until_draw_attrs:
+    params:
+    - id: n_bytes_total
+      type: u4
     seq:
-    - id: size
-      type: multibyte_int_decoded
-      doc : Size of the drawing attribute block (for the first element)
-    - id: drawing_properties
-      type: drawing_properties
+    - id: draw_attr
+      type: |
+        draw_attr(_index == 0 ? n_bytes_total : draw_attr[_index -1].interm_value)
+      repeat: until
+      repeat-until: _.interm_value == 0
+    types:
+      draw_attr:
+        params:
+        - id: prev_bytes_left
+          type: u4
+        seq:
+        - id: size
+          type: multibyte_int_decoded
+        - id: drawing_properties
+          type: drawing_properties(size.value)
+        instances:
+          interm_value:
+            value: prev_bytes_left - size.value - size.len
   drawing_properties:
+    params:
+    - id: size
+      type: u4
     seq:
     - id: tag
       type: multibyte_int_decoded
@@ -282,9 +302,19 @@ types:
       type: 
         switch-on: tag.value
         cases:
-          72: drawing_flags #72-50 so 22 in original index
+          #72: drawing_flags #72-50 so 22 in original index
           # also got 100 but nothing is said for 100- 50 = 50 ..
           # should still be known ?
+          _: skip(size - tag.len)
+  skip:
+    params:
+    - id: size
+      type: u4
+    seq:
+    - id: unread
+      type: u1
+      repeat: expr
+      repeat-expr: size
   drawing_flags:
     seq:
     - id: drawing_flag
