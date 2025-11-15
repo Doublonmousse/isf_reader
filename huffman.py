@@ -12,8 +12,7 @@ def get_huffman_data(index):
         4:[0, 2,  2,  3,  5,  8, 12, 16, 24, 32],
         5:[0, 3,  4,  5,  8, 12, 16, 24, 32],
         6:[0, 4,  6,  8, 12, 16, 24, 32],
-        7:[0, 6,  8, 12, 16, 24, 32],
-        8:[0, 7,  8, 12, 16, 24, 32],
+        7:[0, 7,  8, 12, 16, 24, 32],
     }
 
     bits_amounts = bits_amounts_dic[index]
@@ -79,4 +78,4 @@ def huffman_list_decode(logical_array: np.ndarray, n_points: int, index:int)->Tu
 
 
 def list_int_to_logical_array(list_int: List[int]):
-    return np.unpackbits(np.array(list_int, dtype=np.dtypes.UInt8DType))
+    return np.unpackbits(np.array(list_int, dtype=np.dtypes.UInt8DType)).astype(np.bool)

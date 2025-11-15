@@ -1,8 +1,8 @@
 from pathlib import Path
 from isf_format import IsfFormat
-from huffman import huffman_list_decode, list_int_to_logical_array
-from delta_delta_transform import inverse_delta_delta
-import numpy as np
+from huffman import list_int_to_logical_array
+from compression import inflate_property_data
+import matplotlib.pyplot as plt
 
 
 isf_file = Path.cwd() / "files_test" / "binary_isf.txt"
@@ -19,26 +19,20 @@ read_file = IsfFormat.from_file(isf_file)
 # print("ignore angle {0:b}".format(0x00000040))
 
 print(read_file.isf_tag[5].content.cpoints.value) #nof points
-print("{0:b}".format(read_file.isf_tag[5].content.compression_id))
 
 # read the unread bytes for this
-bytes_compressed = read_file.isf_tag[5].content.compressed_data.unread
+bytes_compressed = read_file.isf_tag[5].content.compressed_data
 cpoints = read_file.isf_tag[5].content.cpoints.value
-index = read_file.isf_tag[5].content.compressed_data.codec
 
 # huffman
 logical_array = list_int_to_logical_array(bytes_compressed)
 offset = 0
 
-x_list, read = huffman_list_decode(logical_array[0:],cpoints,index)
-inverse_delta_delta(x_list)
-offset += read
-print("the offset is", read)
-# BEWARE, we need to read the next byte and check from that both the algorithm AND the index
-
-y_list, read = huffman_list_decode(logical_array[offset:],cpoints,index)
-inverse_delta_delta(y_list)
-offset += read
+offset, x_list = inflate_property_data(offset, logical_array, cpoints)
+offset, y_list = inflate_property_data(offset, logical_array, cpoints)
+# now how to get the rest of the info ? (do we have pressure ? We suppose we know we have)
+offset, pressure_data = inflate_property_data(offset, logical_array, cpoints)
+print("final offset : ", offset)
 
 
 expected_list = [
@@ -155,3 +149,12 @@ print("correct: ",found_isf_library)
 found_isf_library_y = [4610 ,4659 ,4711 ,4756 ,4791 ,4831 ,4909 ,5057 ,5284 ,5560 ,5850 ,6105 ,6310 ,6455 ,6580 ,6683 ,6767 ,6828 ,6867 ,6867 ,6867 ]
 print("ours:", y_list)
 print("correct: ",found_isf_library_y)
+
+## what's left ? 
+# more lists with tilt,rot ? 
+#             int intsPerPoint = stylusPointDescription.GetInputArrayLengthPerPoint();
+# then buttons
+#             int buttonCount = stylusPointDescription.ButtonCount;
+offset, extra = inflate_property_data(offset, logical_array, cpoints=cpoints)
+print(extra)
+# can we get this kind of info as well ?

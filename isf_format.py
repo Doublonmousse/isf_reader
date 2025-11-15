@@ -53,116 +53,6 @@ class IsfFormat(KaitaiStruct):
             self.isf_tag[i]._fetch_instances()
 
 
-    class Bitread(KaitaiStruct):
-        def __init__(self, _io, _parent=None, _root=None):
-            super(IsfFormat.Bitread, self).__init__(_io)
-            self._parent = _parent
-            self._root = _root
-            self._read()
-
-        def _read(self):
-            self.byte = self._io.read_u1()
-
-
-        def _fetch_instances(self):
-            pass
-
-        @property
-        def u1(self):
-            if hasattr(self, '_m_u1'):
-                return self._m_u1
-
-            self._m_u1 = self.byte & 128 > 0
-            return getattr(self, '_m_u1', None)
-
-        @property
-        def u2(self):
-            if hasattr(self, '_m_u2'):
-                return self._m_u2
-
-            self._m_u2 = self.byte & 64 > 0
-            return getattr(self, '_m_u2', None)
-
-        @property
-        def u3(self):
-            if hasattr(self, '_m_u3'):
-                return self._m_u3
-
-            self._m_u3 = self.byte & 32 > 0
-            return getattr(self, '_m_u3', None)
-
-        @property
-        def u4(self):
-            if hasattr(self, '_m_u4'):
-                return self._m_u4
-
-            self._m_u4 = self.byte & 16 > 0
-            return getattr(self, '_m_u4', None)
-
-        @property
-        def u5(self):
-            if hasattr(self, '_m_u5'):
-                return self._m_u5
-
-            self._m_u5 = self.byte & 8 > 0
-            return getattr(self, '_m_u5', None)
-
-        @property
-        def u6(self):
-            if hasattr(self, '_m_u6'):
-                return self._m_u6
-
-            self._m_u6 = self.byte & 4 > 0
-            return getattr(self, '_m_u6', None)
-
-        @property
-        def u7(self):
-            if hasattr(self, '_m_u7'):
-                return self._m_u7
-
-            self._m_u7 = self.byte & 2 > 0
-            return getattr(self, '_m_u7', None)
-
-        @property
-        def u8(self):
-            if hasattr(self, '_m_u8'):
-                return self._m_u8
-
-            self._m_u8 = self.byte & 1 > 0
-            return getattr(self, '_m_u8', None)
-
-
-    class BitreadCompression(KaitaiStruct):
-        def __init__(self, _io, _parent=None, _root=None):
-            super(IsfFormat.BitreadCompression, self).__init__(_io)
-            self._parent = _parent
-            self._root = _root
-            self._read()
-
-        def _read(self):
-            self.byte = self._io.read_u1()
-
-
-        def _fetch_instances(self):
-            pass
-
-        @property
-        def compression_type(self):
-            if hasattr(self, '_m_compression_type'):
-                return self._m_compression_type
-
-            self._m_compression_type = self.byte & 192
-            return getattr(self, '_m_compression_type', None)
-
-        @property
-        def index(self):
-            if hasattr(self, '_m_index'):
-                return self._m_index
-
-            self._m_index = self.byte & 31
-            return getattr(self, '_m_index', None)
-
-
     class Buttons(KaitaiStruct):
         def __init__(self, _io, _parent=None, _root=None):
             super(IsfFormat.Buttons, self).__init__(_io)
@@ -410,7 +300,7 @@ class IsfFormat(KaitaiStruct):
         def _read(self):
             self.unread = []
             for i in range(self.n_bytes):
-                self.unread.append(IsfFormat.BitreadCompression(self._io, self, self._root))
+                self.unread.append(self._io.read_u1())
 
 
 
@@ -418,12 +308,13 @@ class IsfFormat(KaitaiStruct):
             pass
             for i in range(len(self.unread)):
                 pass
-                self.unread[i]._fetch_instances()
 
 
         @property
         def codec_f(self):
-            """This is the index to point to in the huffman precalculated tables."""
+            """This is the index to point to in the huffman precalculated tables. ONLY TRUE FOR THE FIRST
+            LIST
+            """
             if hasattr(self, '_m_codec_f'):
                 return self._m_codec_f
 
@@ -648,6 +539,46 @@ class IsfFormat(KaitaiStruct):
 
 
 
+    class PackedData(KaitaiStruct):
+        """This is only used to show the format used for stroke packing This is not used in practice in the file."""
+        def __init__(self, cb_stroke, cpoints, _io, _parent=None, _root=None):
+            super(IsfFormat.PackedData, self).__init__(_io)
+            self._parent = _parent
+            self._root = _root
+            self.cb_stroke = cb_stroke
+            self.cpoints = cpoints
+            self._read()
+
+        def _read(self):
+            self.compression_id = self._io.read_u1()
+            _on = self.compression_type
+            if _on == 0:
+                pass
+                self.compressed_data = IsfFormat.Uncompressed((self.cb_stroke.value - self.cpoints.len) - 1, self._io, self, self._root)
+            elif _on == 128:
+                pass
+                self.compressed_data = IsfFormat.Huffman((self.cb_stroke.value - self.cpoints.len) - 1, self.compression_id & 31, self._io, self, self._root)
+
+
+        def _fetch_instances(self):
+            pass
+            _on = self.compression_type
+            if _on == 0:
+                pass
+                self.compressed_data._fetch_instances()
+            elif _on == 128:
+                pass
+                self.compressed_data._fetch_instances()
+
+        @property
+        def compression_type(self):
+            if hasattr(self, '_m_compression_type'):
+                return self._m_compression_type
+
+            self._m_compression_type = self.compression_id & 192
+            return getattr(self, '_m_compression_type', None)
+
+
     class SingleMetricElement(KaitaiStruct):
         def __init__(self, _io, _parent=None, _root=None):
             super(IsfFormat.SingleMetricElement, self).__init__(_io)
@@ -682,35 +613,19 @@ class IsfFormat(KaitaiStruct):
         def _read(self):
             self.cb_stroke = IsfFormat.MultibyteIntDecoded(self._io, self, self._root)
             self.cpoints = IsfFormat.MultibyteIntDecoded(self._io, self, self._root)
-            self.compression_id = self._io.read_u1()
-            _on = self.compression_type
-            if _on == 0:
-                pass
-                self.compressed_data = IsfFormat.Uncompressed((self.cb_stroke.value - self.cpoints.len) - 1, self._io, self, self._root)
-            elif _on == 128:
-                pass
-                self.compressed_data = IsfFormat.Huffman((self.cb_stroke.value - self.cpoints.len) - 1, self.compression_id & 31, self._io, self, self._root)
+            self.compressed_data = []
+            for i in range(self.cb_stroke.value - self.cpoints.len):
+                self.compressed_data.append(self._io.read_u1())
+
 
 
         def _fetch_instances(self):
             pass
             self.cb_stroke._fetch_instances()
             self.cpoints._fetch_instances()
-            _on = self.compression_type
-            if _on == 0:
+            for i in range(len(self.compressed_data)):
                 pass
-                self.compressed_data._fetch_instances()
-            elif _on == 128:
-                pass
-                self.compressed_data._fetch_instances()
 
-        @property
-        def compression_type(self):
-            if hasattr(self, '_m_compression_type'):
-                return self._m_compression_type
-
-            self._m_compression_type = self.compression_id & 192
-            return getattr(self, '_m_compression_type', None)
 
 
     class TableElement(KaitaiStruct):
