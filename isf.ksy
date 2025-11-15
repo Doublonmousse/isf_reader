@@ -212,6 +212,11 @@ types:
       type: multibyte_int_decoded
     - id: himetric_size_y
       type: multibyte_int_decoded
+    instances: # pulling the value out for convenience
+      size_x:
+        value: himetric_size_x.value_signed
+      size_y:
+        value: himetric_size_y.value_signed
   guid_table:
     seq:
     - id: header
