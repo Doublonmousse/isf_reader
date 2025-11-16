@@ -181,13 +181,14 @@ types:
     seq:
     - id: header
       type: multibyte_int_decoded
-    #- id: metric_element
-    #  type: single_metric_element
-    - id: unread
-      type: u1
-      repeat: expr
-      repeat-expr: header.value
-      doc: Array of tag/size then a list of bytes to decode until header.value bytes are read
+    - id: metric_element_list
+      type: metric_element_list
+      size: header.value
+  metric_element_list:
+    seq:
+    - id: metric_element
+      type: single_metric_element
+      repeat: eos
   single_metric_element:
     seq:
     - id: tag
@@ -195,15 +196,34 @@ types:
       doc: tag that corresponds to the property of interest
     - id: payload_size
       type: multibyte_int_decoded
-    - id: min
-      type: multibyte_int_decoded
-    - id: max
-      type: multibyte_int_decoded
-    - id: unit
-      type: u1
-    - id: resolution
-      type: f4
-      doc: may be == 0 ?
+    - id: metric_values
+      type: metric_values(payload_size.value)
+      size: payload_size.value
+  metric_values:
+    doc: |
+      metric blocks always have the min value. The rest are optional, and we either have
+      - min
+      - min,max
+      - min,max,unit
+      - min,max,unit,resolution
+    params:
+      - id: size
+        type: u4
+    seq:
+      - id: min
+        type: multibyte_int_decoded
+        doc: the min is in min.value_signed
+      - id: max
+        type: multibyte_int_decoded
+        if: min.len < size
+        doc: the max is in max.value_signed
+      - id: unit
+        type: u1
+        enum: metric_scale
+        if: min.len + max.len < size
+      - id: resolution
+        type: f4le
+        if: min.len + max.len + 1 + 4 == size
   himetric_size:
     seq:
     - id: header
@@ -241,12 +261,14 @@ types:
     seq:
     - id: size_total
       type: multibyte_int_decoded
-    - id: unread
-      type: u1
-      repeat: expr
-      repeat-expr: size_total.value
-    #- id: descriptor_blocks
-    #  type: descriptor_block
+    - id: descriptor_blocks
+      type: descriptor_block_list
+      size: size_total.value
+  descriptor_block_list:
+    seq:
+    - id: descriptor
+      type: descriptor_block
+      repeat: eos
   descriptor_block:
     seq:
     - id: tag
@@ -255,13 +277,24 @@ types:
       type: 
         switch-on: tag
         cases:
-          56: buttons 
-          #61: stroke_properties_list
-  buttons:
+          # not checked : 6 for buttons (special case)
+          11: stroke_property_list
+          _: add_tag(tag)
+  add_tag:
+    params:
+    - id: tag
+      type: u4
+    doc: This is the case where we just add the tag to the list 
+    seq: []
+    instances:
+      tag_value:
+        value: tag
+        enum: tags_stroke_desc
+  stroke_property_list:
     seq:
-    - id: nof_buttons
-      type: multibyte_int_decoded
-      doc: no way is there > 255 buttons right ?
+     - id: tags
+       type: multibyte_int_decoded
+       repeat: eos
   tag_draw_attrs_table:
     doc: |
       This is a block that can ONLY be decoded once
@@ -540,3 +573,51 @@ enums:
     9: mask_pen_highlighter
     13: default
     # See https://source.dot.net/#PresentationCore/MS/Internal/Ink/InkSerializedFormat/DrawingAttributeSerializer.cs,396
+  tags_stroke_desc:
+    50: x
+    51: y
+    52: z
+    53: packetstatus
+    54: timertick
+    55: serialnumber
+    56: normalpressure
+    57: tangentpressure
+    58: buttonpressure
+    59: xtiltorientation
+    60: ytiltorientation
+    61: azimuthorientation
+    62: altitudeorientation
+    63: twistorientation
+    64: pitchrotation
+    65: rollrotation
+    66: yawrotation
+    67: penstyle
+    68: colorref
+    69: styluswidth
+    70: stylusheight
+    71: pentip
+    72: drawingflags
+    73: cursorid
+    74: wordalternates
+    75: charalternates
+    76: inkmetrics
+    77: guidestructure
+    78: timestamp
+    79: language
+    80: transparency
+    81: curvefittingerror
+    82: recolattice
+    83: cursordown
+    84: secondarytipswitch
+    85: barreldown
+    86: tabletpick
+    87: rasteroperation
+  metric_scale:
+    0: unit_default
+    1: unit_inch
+    2: unit_centimeter
+    3: unit_degree
+    4: unit_radian
+    5: unit_second
+    6: unit_pound
+    7: unit_gram
