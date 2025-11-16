@@ -290,8 +290,8 @@ types:
         - id: size
           type: multibyte_int_decoded
         - id: drawing_properties_list
-          type: drawing_properties_list(size.value - size.len)
-          size: size.value - size.len
+          type: drawing_properties_list(size.value)
+          size: size.value
         instances:
           interm_value:
             value: prev_bytes_left - size.value - size.len
@@ -309,10 +309,6 @@ types:
     - id: drawing_properties
       type: drawing_property_bounded(size)
       repeat: eos
-      #type: |
-      #  drawing_property_bounded(_index == 0 ? size : drawing_properties[_index - 1].interm_value)
-      #repeat: until
-      #repeat-until: _.interm_value <= 0
     types:
       drawing_property_bounded:
         params:
@@ -326,9 +322,14 @@ types:
           type: 
             switch-on: tag
             cases:
+              27: mantissa
 
               65: roll_rotation
               68: color_ref
+              69: pen_width
+              70: pen_width # actually pen height 
+              71: da_pen_tip
+              87: raster_operation
               72: drawing_flags
               
               100: custom_guid_tagged
@@ -361,9 +362,6 @@ types:
               127: custom_guid_tagged
 
               _: skip(0) # because we choose to skip 0, we'd be okay unless we trip on the tag
-        instances:
-          interm_value:
-            value: prev_bytes_left - 1 #drawing_attribute # and now we're a little blocked
   skip:
     params:
     - id: size_jump
@@ -423,16 +421,54 @@ types:
         value: (drawing_flag.value & 0x0100) > 0
   color_ref:
     seq:
-    - id: blue
-      type: u1
-    - id: green
-      type: u1
-    - id: red
-      type: u1
+    - id: encoded_bgr
+      type: multibyte_int_decoded
+      doc: The rgb value is encoded on a multibyte int. So for black we have 4 bytes !!
+        We read the multibyte then reconvert to the correct values
+    instances:
+      blue: 
+        value: (encoded_bgr.value & 0xFF)
+      green:
+        value: ((encoded_bgr.value & 0xff00) >> 8)
+      red:
+        value: ((encoded_bgr.value & 0xff0000) >> 16)
+  pen_width:
+    seq:
+    - id: encoded_width
+      type: multibyte_int_decoded
+    instances:
+      pen_width_himetric:
+        value: encoded_width.value
+      pen_width_pixel:
+        value: encoded_width.value / 26.4572454037811
   da_pen_tip:
     seq:
     - id: pen_tip_type
       type: u1
+    instances:
+      is_rectangular:
+        value: pen_tip_type == 1
+  raster_operation:
+    seq:
+    - id: rop
+      type: u1
+      enum: rop_enum
+    - id: unread
+      type: u1
+      repeat: expr
+      repeat-expr: 3
+      doc: we jump the size of an uint32 so 4 bytes total
+  mantissa:
+    doc: Optional block that can happen after a stylus height/width element to have better
+      width/height size precision
+    seq:
+    - id: size
+      type: multibyte_int_decoded
+    - id: unread
+      type: skip(size.value+1)
+      doc: |
+        Compressed int16 that adds a little something to the pen size with
+        _size += (double)(sFraction / 1000.0f); ?
   multibyte_int_decoded:
     doc: |
       Extracted from https://github.com/kaitai-io/kaitai_struct_formats/blob/5f37c8178a631ae1d50e044be7af58dced0d0b69/common/vlq_base128_le.ksy#L11
@@ -500,5 +536,7 @@ enums:
     21: tag_transform_and_scale
     25: tag_metric_block
     29: tag_himetric_size
-  guid_enum:
-    72: transform_quad
+  rop_enum:
+    9: mask_pen_highlighter
+    13: default
+    # See https://source.dot.net/#PresentationCore/MS/Internal/Ink/InkSerializedFormat/DrawingAttributeSerializer.cs,396
