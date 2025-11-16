@@ -93,10 +93,9 @@ types:
     seq:
     - id: header
       type: multibyte_int_decoded
-    - id: unread
-      type: u1
-      repeat: expr
-      repeat-expr: header.value
+    - id: drawing_properties
+      type: drawing_properties_list(header.value)
+      size: header.value
   ink_space_rect:
     seq:
     - id: left_d
@@ -345,6 +344,7 @@ types:
       Each drawing attribute is a list of tags that each update/set a different field.
       Beware here that we ONLY have the tag and no size indicator so we need to know all tag-> size
       correspondances correctly and/or jump/skip to the end to preserve the alignment to the next tag.
+      Ref : https://source.dot.net/#PresentationCore/MS/Internal/Ink/InkSerializedFormat/DrawingAttributeSerializer.cs,111
     seq:
     - id: drawing_properties
       type: drawing_property_bounded(size)
@@ -364,13 +364,22 @@ types:
             cases:
               27: mantissa
 
+              # 50 : start
+
+              # TODO
+
               65: roll_rotation
               68: color_ref
               69: pen_width
               70: pen_width # actually pen height 
               71: da_pen_tip
-              87: raster_operation
               72: drawing_flags
+
+              # TODO
+
+              80: transparency
+
+              87: raster_operation
               
               100: custom_guid_tagged
               101: custom_guid_tagged
@@ -411,6 +420,10 @@ types:
       type: u1
       repeat: expr
       repeat-expr: size_jump
+  transparency:
+    seq:
+    - id: transparency_value
+      type: multibyte_int_decoded
   roll_rotation:
     doc: tag 65, extended prop with size from https://source.dot.net/#PresentationCore/MS/Internal/Ink/InkSerializedFormat/ISFTagAndGuidCache.cs,71
     seq:
