@@ -59,6 +59,9 @@ types:
     seq:
     - id: value
       type: multibyte_int_decoded
+    instances:
+      new_index:
+        value: value.value
   transform_and_scale:
     seq:
     - id: values
@@ -199,6 +202,10 @@ types:
     - id: metric_values
       type: metric_values(payload_size.value)
       size: payload_size.value
+    instances:
+      tag_v:
+        value: tag.value
+        enum: tags_stroke_desc
   metric_values:
     doc: |
       metric blocks always have the min value. The rest are optional, and we either have
