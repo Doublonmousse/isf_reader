@@ -18,22 +18,6 @@ types:
     - id: isf_version
       type: u1
       doc: This SHOULD be 0, abort otherwise (wrong version otherwise)
-  multibyte_int:
-    seq:
-    - id: int_value
-      type: u1
-      repeat: until
-      repeat-until: _ & 0b1000_0000 == 0
-  multibyte_int_signed:
-    doc: This is the same as multibyte_int as far as parsing goes
-      But there is some difference in how to read the output value
-      For now we don't decode it with the multibyte_int_decoded
-      instance as this isn't needed
-    seq:
-    - id: int_value
-      type: u1
-      repeat: until
-      repeat-until: _ & 0b1000_0000 == 0
   table_element:
     seq:
     - id: isf_tag
@@ -47,7 +31,7 @@ types:
           'tag_table::tag_guid_table' : guid_table
           'tag_table::tag_draw_attrs_table': tag_draw_attrs_table
           'tag_table::tag_draw_attrs_block': tag_draw_attrs_block 
-
+          'tag_table::tag_stroke_desc_table': tag_stroke_desc_table
           'tag_table::tag_stroke_desc_block': tag_stroke_desc_block
 
           'tag_table::tag_didx': didx
@@ -67,6 +51,18 @@ types:
           'tag_table::tag_himetric_size': himetric_size
           'tag_table::stroke_ids': stroke_ids
           _: custom_guid_tagged
+  tag_stroke_desc_table:
+    seq:
+    - id: size
+      type: multibyte_int_decoded
+    - id: stroke_descriptor_block_list
+      type: stroke_descriptor_block_list
+      size: size.value
+  stroke_descriptor_block_list:
+    seq:
+    - id: stroke_descriptor_block_list
+      type: tag_stroke_desc_block
+      repeat: eos
   didx:
     seq:
     - id: value
@@ -646,33 +642,42 @@ enums:
     1: tag_guid_table
     2: tag_draw_attrs_table
     3: tag_draw_attrs_block
-    #4: tag_stroke_desc_table # unread, TODO
+    4: tag_stroke_desc_table 
     5: tag_stroke_desc_block
     # 6 is descriptor specific
     # 7 and 8 are no_x and no_y, but only seen on incorrect ISF files
     9: tag_didx
     10: tag_stroke
     # 11 is descriptor specific
-    # 12 is stroke specific (TODO)
+    # TODO
+    # 12 is stroke specific (TODO in the stroke reader itself)
     13: stroke_descriptor_table_index
     14: compression_header
-    # 15
-    # 16
+    # TODO
+    # 15: transform_table
+    # TODO
+    # 16: transform
     17: transform_isotropic_scale
-    # 18
-    # 19
-    # 20
+    # TODO
+    # 18: transform_anisotropic_scale
+    # TODO
+    # 19: transform_rotate
+    # TODO
+    # 20: transform_translate
     21: tag_transform_and_scale
-    # 22
+    # TODO
+    # 22: transform_quad
     23: transform_table_index
-    # 24
+    # TODO
+    # 24: tag_metric_table
     25: tag_metric_block
     26: tag_metric_table_index
-    # 27: mantissa (specific/interna; to stroke descriptor)
+    # 27: mantissa (specific/internal to stroke descriptor)
     28: persistence_format
     29: tag_himetric_size
     30: stroke_ids
-    # 31
+    # TODO:
+    # 31: ExtendedTransformTable
   rop_enum:
     9: mask_pen_highlighter
     13: default
