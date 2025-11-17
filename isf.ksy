@@ -45,18 +45,26 @@ types:
         cases:
           'tag_table::tag_ink_space_rect': ink_space_rect
           'tag_table::tag_guid_table' : guid_table
-          'tag_table::tag_himetric_size': himetric_size
-          'tag_table::tag_buttons': unread_tag
           'tag_table::tag_draw_attrs_table': tag_draw_attrs_table
           'tag_table::tag_draw_attrs_block': tag_draw_attrs_block 
+
           'tag_table::tag_stroke_desc_block': tag_stroke_desc_block
+
+          'tag_table::tag_didx': didx
+          'tag_table::tag_stroke': stroke
+          'tag_table::stroke_descriptor_table_index': stroke_descriptor_table_index
+          'tag_table::compression_header': compression_header
+
+          'tag_table::transform_isotropic_scale': transform_isotropic_scale
+
+          'tag_table::tag_transform_and_scale': transform_and_scale
+
+          'tag_table::transform_table_index': transform_table_index
+
           'tag_table::tag_metric_block': metric_block
           'tag_table::tag_metric_table_index': metric_table_index
-          'tag_table::tag_stroke': stroke
-          'tag_table::tag_didx': didx
-          'tag_table::transform_isotropic_scale': transform_isotropic_scale
-          'tag_table::tag_transform_and_scale': transform_and_scale
           'tag_table::persistence_format': persistence_format
+          'tag_table::tag_himetric_size': himetric_size
           'tag_table::stroke_ids': stroke_ids
           _: custom_guid_tagged
   didx:
@@ -66,6 +74,15 @@ types:
     instances:
       new_index:
         value: value.value
+  compression_header:
+    doc: unused in the format so skipped
+    seq:
+    - id: size
+      type: multibyte_int_decoded
+    - id: unread
+      type: u1
+      repeat: expr
+      repeat-expr: size.value
   transform_isotropic_scale:
     seq:
     - id: scale
@@ -96,6 +113,19 @@ types:
       type: multibyte_int_decoded
     - id: index
       type: multibyte_int_decoded
+  transform_table_index:
+    seq: 
+    - id: size
+      type: multibyte_int_decoded
+    - id: index
+      type: multibyte_int_decoded
+  stroke_descriptor_table_index:
+    seq:
+    - id: value
+      type: multibyte_int_decoded
+    instances:
+      new_index:
+        value: value.value
   transform_and_scale:
     seq:
     - id: scale_x_himetric
@@ -259,7 +289,7 @@ types:
       type: 
         switch-on: tag
         cases:
-          # not checked : 6 for buttons (special case)
+          # not checked : 6 for buttons (special case) TODO
           11: stroke_property_list
           _: add_tag(tag)
   add_tag:
@@ -340,7 +370,7 @@ types:
             cases:
               27: mantissa
 
-              # 50 : start
+              # 50 : start of the drawing attributes list
 
               # TODO
 
@@ -607,25 +637,42 @@ types:
       repeat-expr: n_bytes
 
 enums:
+  tag_descriptor_specific:
+    #6: tag_buttons # TODO
+    11: stroke_property_list
+
   tag_table:
     0: tag_ink_space_rect
     1: tag_guid_table
     2: tag_draw_attrs_table
     3: tag_draw_attrs_block
-    # 4 : missing, stroke descriptor block
+    #4: tag_stroke_desc_table # unread, TODO
     5: tag_stroke_desc_block
-    6: tag_buttons # not read
-    7: no_x # unread
-    8: no_y # unread
+    # 6 is descriptor specific
+    # 7 and 8 are no_x and no_y, but only seen on incorrect ISF files
     9: tag_didx
     10: tag_stroke
+    # 11 is descriptor specific
+    # 12 is stroke specific (TODO)
+    13: stroke_descriptor_table_index
+    14: compression_header
+    # 15
+    # 16
     17: transform_isotropic_scale
+    # 18
+    # 19
+    # 20
     21: tag_transform_and_scale
+    # 22
+    23: transform_table_index
+    # 24
     25: tag_metric_block
     26: tag_metric_table_index
+    # 27: mantissa (specific/interna; to stroke descriptor)
     28: persistence_format
     29: tag_himetric_size
     30: stroke_ids
+    # 31
   rop_enum:
     9: mask_pen_highlighter
     13: default
