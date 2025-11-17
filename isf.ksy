@@ -51,10 +51,14 @@ types:
           'tag_table::tag_draw_attrs_block': tag_draw_attrs_block 
           'tag_table::tag_stroke_desc_block': tag_stroke_desc_block
           'tag_table::tag_metric_block': metric_block
+          'tag_table::tag_metric_table_index': metric_table_index
           'tag_table::tag_stroke': stroke
           'tag_table::tag_didx': didx
+          'tag_table::transform_isotropic_scale': transform_isotropic_scale
           'tag_table::tag_transform_and_scale': transform_and_scale
-          _: custom_guid
+          'tag_table::persistence_format': persistence_format
+          'tag_table::stroke_ids': stroke_ids
+          _: custom_guid_tagged
   didx:
     seq:
     - id: value
@@ -62,12 +66,51 @@ types:
     instances:
       new_index:
         value: value.value
+  transform_isotropic_scale:
+    seq:
+    - id: scale
+      type: f4le
+  persistence_format:
+    seq:
+    - id: size
+      type: multibyte_int_decoded
+    - id: format
+      type: multibyte_int_decoded
+    instances:
+      is_gif: 
+        value: format.value & 0x00000001
+  stroke_ids:
+    doc: This is neither used in libisf-qt nor the official C# impl
+    seq:
+    - id: size
+      type: multibyte_int_decoded
+    - id: nof_ids
+      type: multibyte_int_decoded
+    - id: unread
+      type: u1
+      repeat: expr
+      repeat-expr: size.value - nof_ids.len
+  metric_table_index:
+    seq: 
+    - id: size
+      type: multibyte_int_decoded
+    - id: index
+      type: multibyte_int_decoded
   transform_and_scale:
     seq:
-    - id: values
+    - id: scale_x_himetric
       type: f4le
-      repeat: expr
-      repeat-expr: 4
+    - id: scale_y_himetric
+      type: f4le
+    - id: dx
+      type: f4le
+    - id: dy
+      type: f4le
+    instances:
+      scale_x_px: 
+        value: scale_x_himetric / 26.4572454037811
+      scale_y_px:
+        value: scale_y_himetric / 26.4572454037811
   unread_tag:
    seq:
     - id: header
@@ -76,19 +119,6 @@ types:
       type: u1
       repeat: expr
       repeat-expr: header.value
-  custom_guid:
-    seq:
-    - id: tag
-      type: multibyte_int_decoded
-      doc: if there is a tag, we have to read it from the stream
-    - id: info
-      type: u1
-      repeat: expr
-      repeat-expr: 4
-      doc: For a guid with known size (105/3), we know to read 4 bytes
-         there is a table of guid to size in the isf spec
-    doc: To affine to really take into account all guids
-      Here we suppose the isf_tag == 105 .. 
   tag_draw_attrs_block:
     seq:
     - id: header
@@ -125,60 +155,6 @@ types:
       type: u1
       repeat: expr
       repeat-expr: cb_stroke.value - cpoints.len
-  packed_data:
-    doc: This is only used to show the format used for stroke packing
-      This is not used in practice in the file
-    params:
-    - id: cb_stroke
-      type: multibyte_int_decoded
-    - id: cpoints
-      type: multibyte_int_decoded 
-    seq:
-    - id: compression_id
-      type: u1
-      doc: | 
-        Should be read to know the type of compression. 
-        We'll assume default here. As we are dealing with
-        Stroke data, should be PROPERTY_BIT_PACK_LONG 
-        with _signed_ values ? maybe need to look at the code
-        in more detail to really understand what is done
-        at the lowest level
-    - id: compressed_data
-      type:
-        switch-on: compression_type
-        cases:
-          0x00: uncompressed(cb_stroke.value - cpoints.len - 1)
-          0x80: huffman(cb_stroke.value - cpoints.len - 1, 
-            compression_id & 0b00011111)
-    instances:
-      compression_type:
-        value: compression_id & 0b11000000
-  huffman:
-    params:
-    - id: n_bytes
-      type: u4
-    - id: codec
-      type: u1
-    seq:
-    - id: unread
-      type: u1
-      repeat: expr
-      repeat-expr: n_bytes
-    instances:
-      codec_f:
-        value: codec
-        doc: |
-          This is the index to point to in the huffman precalculated tables. ONLY TRUE FOR THE FIRST
-          LIST
-  uncompressed:
-    params:
-    - id: n_bytes
-      type: u4
-    seq:
-    - id: unread
-      type: u1
-      repeat: expr
-      repeat-expr: n_bytes
   metric_block:
     seq:
     - id: header
@@ -575,6 +551,60 @@ types:
         doc: Resulting unsigned value as normal integer
       value_signed:
         value: '(value & 0x01 > 0) ? (-value>>1) : value>>1'
+  packed_data:
+    doc: This is only used to show the format used for stroke packing
+      This is not used in practice in the file
+    params:
+    - id: cb_stroke
+      type: multibyte_int_decoded
+    - id: cpoints
+      type: multibyte_int_decoded 
+    seq:
+    - id: compression_id
+      type: u1
+      doc: | 
+        Should be read to know the type of compression. 
+        We'll assume default here. As we are dealing with
+        Stroke data, should be PROPERTY_BIT_PACK_LONG 
+        with _signed_ values ? maybe need to look at the code
+        in more detail to really understand what is done
+        at the lowest level
+    - id: compressed_data
+      type:
+        switch-on: compression_type
+        cases:
+          0x00: uncompressed(cb_stroke.value - cpoints.len - 1)
+          0x80: huffman(cb_stroke.value - cpoints.len - 1, 
+            compression_id & 0b00011111)
+    instances:
+      compression_type:
+        value: compression_id & 0b11000000
+  huffman:
+    params:
+    - id: n_bytes
+      type: u4
+    - id: codec
+      type: u1
+    seq:
+    - id: unread
+      type: u1
+      repeat: expr
+      repeat-expr: n_bytes
+    instances:
+      codec_f:
+        value: codec
+        doc: |
+          This is the index to point to in the huffman precalculated tables. ONLY TRUE FOR THE FIRST
+          LIST
+  uncompressed:
+    params:
+    - id: n_bytes
+      type: u4
+    seq:
+    - id: unread
+      type: u1
+      repeat: expr
+      repeat-expr: n_bytes
 
 enums:
   tag_table:
@@ -582,13 +612,20 @@ enums:
     1: tag_guid_table
     2: tag_draw_attrs_table
     3: tag_draw_attrs_block
+    # 4 : missing, stroke descriptor block
     5: tag_stroke_desc_block
-    6: tag_buttons
+    6: tag_buttons # not read
+    7: no_x # unread
+    8: no_y # unread
     9: tag_didx
     10: tag_stroke
+    17: transform_isotropic_scale
     21: tag_transform_and_scale
     25: tag_metric_block
+    26: tag_metric_table_index
+    28: persistence_format
     29: tag_himetric_size
+    30: stroke_ids
   rop_enum:
     9: mask_pen_highlighter
     13: default
