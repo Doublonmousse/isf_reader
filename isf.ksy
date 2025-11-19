@@ -33,14 +33,16 @@ types:
           'tag_table::tag_draw_attrs_block': tag_draw_attrs_block 
           'tag_table::tag_stroke_desc_table': tag_stroke_desc_table
           'tag_table::tag_stroke_desc_block': tag_stroke_desc_block
-
           'tag_table::tag_didx': didx
           'tag_table::tag_stroke': stroke
           'tag_table::stroke_descriptor_table_index': stroke_descriptor_table_index
           'tag_table::compression_header': compression_header
 
+          'tag_table::transform': transform
           'tag_table::transform_isotropic_scale': transform_isotropic_scale
-
+          'tag_table::transform_anisotropic_scale': transform_anisotropic_scale
+          'tag_table::transform_rotate': transform_rotate
+          'tag_table::transform_translate': transform_translate
           'tag_table::tag_transform_and_scale': transform_and_scale
 
           'tag_table::transform_table_index': transform_table_index
@@ -79,9 +81,52 @@ types:
       type: u1
       repeat: expr
       repeat-expr: size.value
+  transform:
+    seq:
+    - id: scale_x_himetric
+      type: f4le
+    - id: scale_y_himetric
+      type: f4le
+    - id: shear_x
+      type: f4le
+    - id: shear_y
+      type: f4le
+    - id: dx
+      type: f4le
+    - id: dy
+      type: f4le
+    instances:
+      scale_x_px:
+        value: scale_x_himetric / 26.4572454037811
+      scale_y_py:
+        value: scale_y_himetric / 26.4572454037811
   transform_isotropic_scale:
     seq:
     - id: scale
+      type: f4le
+  transform_anisotropic_scale:
+    seq:
+    - id: scale_x_himetric
+      type: f4le
+    - id: scale_y_himetric
+      type: f4le
+    instances:
+      scale_x_px:
+        value: scale_x_himetric / 26.4572454037811
+      scale_y_py:
+        value: scale_y_himetric / 26.4572454037811
+  transform_rotate:
+    seq:
+    - id: rotate_amount
+      type: f4le
+    instances:
+      rotate:
+        value: rotate_amount / 100
+  transform_translate:
+    seq:
+    - id: dx
+      type: f4le
+    - id: dy
       type: f4le
   persistence_format:
     seq:
@@ -656,17 +701,13 @@ enums:
     # TODO
     # 15: transform_table
     # TODO
-    # 16: transform
+    16: transform
     17: transform_isotropic_scale
-    # TODO
-    # 18: transform_anisotropic_scale
-    # TODO
-    # 19: transform_rotate
-    # TODO
-    # 20: transform_translate
+    18: transform_anisotropic_scale
+    19: transform_rotate
+    20: transform_translate
     21: tag_transform_and_scale
-    # TODO
-    # 22: transform_quad
+    # 22 transform_quad is unused, it never appears in the C# impl
     23: transform_table_index
     # TODO
     # 24: tag_metric_table
