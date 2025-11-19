@@ -37,14 +37,13 @@ types:
           'tag_table::tag_stroke': stroke
           'tag_table::stroke_descriptor_table_index': stroke_descriptor_table_index
           'tag_table::compression_header': compression_header
-
-          'tag_table::transform': transform
-          'tag_table::transform_isotropic_scale': transform_isotropic_scale
-          'tag_table::transform_anisotropic_scale': transform_anisotropic_scale
-          'tag_table::transform_rotate': transform_rotate
-          'tag_table::transform_translate': transform_translate
-          'tag_table::tag_transform_and_scale': transform_and_scale
-
+          'tag_table::transform_table': transform_table(false)
+          'tag_table::transform': transform(false)
+          'tag_table::transform_isotropic_scale': transform_isotropic_scale(false)
+          'tag_table::transform_anisotropic_scale': transform_anisotropic_scale(false)
+          'tag_table::transform_rotate': transform_rotate(false)
+          'tag_table::transform_translate': transform_translate(false)
+          'tag_table::tag_transform_and_scale': transform_and_scale(false)
           'tag_table::transform_table_index': transform_table_index
           'tag_table::tag_metric_table': metric_table
           'tag_table::tag_metric_block': metric_block
@@ -52,6 +51,7 @@ types:
           'tag_table::persistence_format': persistence_format
           'tag_table::tag_himetric_size': himetric_size
           'tag_table::stroke_ids': stroke_ids
+          'tag_table::extended_transform_table': transform_table(true)
           _: custom_guid_tagged
   tag_stroke_desc_table:
     seq:
@@ -81,53 +81,153 @@ types:
       type: u1
       repeat: expr
       repeat-expr: size.value
+  transform_table:
+    params: 
+    - id: uses_double
+      type: b1
+    seq:
+    - id: size
+      type: multibyte_int_decoded
+    - id: transform_block_list
+      type: transform_block_list(uses_double)
+      size: size.value
+  transform_block_list:
+    params:
+    - id: uses_double
+      type: b1
+    seq:
+    - id: transform_block_list
+      type: transform_block(uses_double)
+      repeat: eos 
+  transform_block:
+    params:
+    - id: uses_double
+      type: b1
+    seq:
+    - id: tag
+      type: u1
+      enum: tag_table
+      doc: Technically it's not tag table, more a subset of potential values
+    - id: transform
+      type: 
+        switch-on: tag
+        cases:
+          'tag_table::transform': transform(uses_double)
+          'tag_table::transform_isotropic_scale': transform_isotropic_scale(uses_double)
+          'tag_table::transform_anisotropic_scale': transform_anisotropic_scale(uses_double)
+          'tag_table::transform_rotate': transform_rotate(uses_double)
+          'tag_table::transform_translate': transform_translate(uses_double)
+          'tag_table::tag_transform_and_scale': transform_and_scale(uses_double)
   transform:
+    params:
+    - id: uses_double
+      type: b1
     seq:
     - id: scale_x_himetric
-      type: f4le
+      type: 
+        switch-on: uses_double
+        cases:
+         false: f4le
+         true: f8le
     - id: scale_y_himetric
-      type: f4le
+      type: 
+        switch-on: uses_double
+        cases:
+         false: f4le
+         true: f8le
     - id: shear_x
-      type: f4le
+      type: 
+        switch-on: uses_double
+        cases:
+         false: f4le
+         true: f8le
     - id: shear_y
-      type: f4le
+      type: 
+        switch-on: uses_double
+        cases:
+         false: f4le
+         true: f8le
     - id: dx
-      type: f4le
+      type: 
+        switch-on: uses_double
+        cases:
+         false: f4le
+         true: f8le
     - id: dy
-      type: f4le
+      type: 
+        switch-on: uses_double
+        cases:
+         false: f4le
+         true: f8le
     instances:
       scale_x_px:
         value: scale_x_himetric / 26.4572454037811
       scale_y_py:
         value: scale_y_himetric / 26.4572454037811
   transform_isotropic_scale:
+    params:
+    - id: uses_double
+      type: b1
     seq:
     - id: scale
-      type: f4le
+      type: 
+        switch-on: uses_double
+        cases:
+         false: f4le
+         true: f8le
   transform_anisotropic_scale:
+    params:
+    - id: uses_double
+      type: b1
     seq:
     - id: scale_x_himetric
-      type: f4le
+      type: 
+        switch-on: uses_double
+        cases:
+         false: f4le
+         true: f8le
     - id: scale_y_himetric
-      type: f4le
+      type: 
+        switch-on: uses_double
+        cases:
+         false: f4le
+         true: f8le
     instances:
       scale_x_px:
         value: scale_x_himetric / 26.4572454037811
       scale_y_py:
         value: scale_y_himetric / 26.4572454037811
   transform_rotate:
+    params:
+    - id: uses_double
+      type: b1
     seq:
     - id: rotate_amount
-      type: f4le
+      type: 
+        switch-on: uses_double
+        cases:
+         false: f4le
+         true: f8le
     instances:
       rotate:
         value: rotate_amount / 100
   transform_translate:
+    params:
+    - id: uses_double
+      type: b1
     seq:
     - id: dx
-      type: f4le
+      type: 
+        switch-on: uses_double
+        cases:
+         false: f4le
+         true: f8le
     - id: dy
-      type: f4le
+      type: 
+        switch-on: uses_double
+        cases:
+         false: f4le
+         true: f8le
   persistence_format:
     seq:
     - id: size
@@ -168,15 +268,34 @@ types:
       new_index:
         value: value.value
   transform_and_scale:
+    params:
+    - id: uses_double
+      type: b1
     seq:
     - id: scale_x_himetric
-      type: f4le
+      type: 
+        switch-on: uses_double
+        cases:
+         false: f4le
+         true: f8le
     - id: scale_y_himetric
-      type: f4le
+      type: 
+        switch-on: uses_double
+        cases:
+         false: f4le
+         true: f8le
     - id: dx
-      type: f4le
+      type: 
+        switch-on: uses_double
+        cases:
+         false: f4le
+         true: f8le
     - id: dy
-      type: f4le
+      type: 
+        switch-on: uses_double
+        cases:
+         false: f4le
+         true: f8le
     instances:
       scale_x_px: 
         value: scale_x_himetric / 26.4572454037811
@@ -705,14 +824,11 @@ enums:
     # 7 and 8 are no_x and no_y, but only seen on incorrect ISF files
     9: tag_didx
     10: tag_stroke
-    # 11 is descriptor specific
-    # TODO
-    # 12 is stroke specific (TODO in the stroke reader itself)
+    # 11 (stroke property list)is descriptor specific
+    # 12 (point property) is stroke specific (in the stroke decoder)
     13: stroke_descriptor_table_index
     14: compression_header
-    # TODO
-    # 15: transform_table
-    # TODO
+    15: transform_table
     16: transform
     17: transform_isotropic_scale
     18: transform_anisotropic_scale
@@ -728,8 +844,7 @@ enums:
     28: persistence_format
     29: tag_himetric_size
     30: stroke_ids
-    # TODO:
-    # 31: ExtendedTransformTable
+    31: extended_transform_table
   rop_enum:
     9: mask_pen_highlighter
     13: default
