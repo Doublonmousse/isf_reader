@@ -46,7 +46,7 @@ types:
           'tag_table::tag_transform_and_scale': transform_and_scale
 
           'tag_table::transform_table_index': transform_table_index
-
+          'tag_table::tag_metric_table': metric_table
           'tag_table::tag_metric_block': metric_block
           'tag_table::tag_metric_table_index': metric_table_index
           'tag_table::persistence_format': persistence_format
@@ -226,6 +226,18 @@ types:
       type: u1
       repeat: expr
       repeat-expr: cb_stroke.value - cpoints.len
+  metric_table:
+    seq:
+    - id: size
+      type: multibyte_int_decoded
+    - id: metric_block_list
+      type: metric_block_list
+      size: size.value
+  metric_block_list:
+    seq:
+    - id: metric_block_list
+      type: metric_block
+      repeat: eos 
   metric_block:
     seq:
     - id: header
@@ -709,8 +721,7 @@ enums:
     21: tag_transform_and_scale
     # 22 transform_quad is unused, it never appears in the C# impl
     23: transform_table_index
-    # TODO
-    # 24: tag_metric_table
+    24: tag_metric_table
     25: tag_metric_block
     26: tag_metric_table_index
     # 27: mantissa (specific/internal to stroke descriptor)
