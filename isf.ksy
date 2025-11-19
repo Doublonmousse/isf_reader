@@ -541,24 +541,55 @@ types:
             switch-on: tag
             cases:
               27: mantissa
-
               # 50 : start of the drawing attributes list
-
-              # TODO
-
-              65: roll_rotation
+              # <extended property
+              50: extended_property_known_size(tag,4) # x, int
+              51: extended_property_known_size(tag,4) # y, int
+              52: extended_property_known_size(tag,4) # z, int
+              53: extended_property_known_size(tag,4) # packet status,int
+              54: extended_property_known_size(tag,2*2) # timer tick, 2 uint
+              55: extended_property_known_size(tag,4) # serial number, uint
+              56: extended_property_known_size(tag,2) # normal pressure, ushort
+              57: extended_property_known_size(tag,2) # tangent presusre, ushort
+              58: extended_property_known_size(tag,2) # button pressure, ushort
+              59: extended_property_known_size(tag,4) # x tilt orientation, float
+              60: extended_property_known_size(tag,4) # y tilt orientation, float
+              61: extended_property_known_size(tag,4) # azimuth orientation, float
+              62: extended_property_known_size(tag,4) # altitude orientation, float
+              63: extended_property_known_size(tag,4) # twist orientation, float
+              64: extended_property_known_size(tag,2) # pitch rotation, ushort
+              65: extended_property_known_size(tag,2) # roll rotation, ushort
+              66: extended_property_known_size(tag,2) # yaw rotation rotation, ushort
+              # extended property/>
+              67: pen_style
               68: color_ref
               69: pen_width
               70: pen_width # actually pen height 
               71: da_pen_tip
               72: drawing_flags
-
-              # TODO
-
+              # <extended property
+              73: extended_property_known_size(tag,4) # cursor id, uint
+              74: custom_guid_tagged # word alternates
+              75: custom_guid_tagged # char alternates 
+              76: extended_property_known_size(tag,5*4) # inkmetric, 5 uint
+              77: extended_property_known_size(tag,3*4) # guide structure, 3 uint
+              78: extended_property_known_size(tag,8*2) # guide structure, 8 ushort
+              79: extended_property_known_size(tag,8*2) # language, 1 ushort
+              # extended property/>
               80: transparency
-
+              81: curvefittingerror
+              # <extended property
+              82: custom_guid_tagged # reco lattice
+              83: extended_property_known_size(tag,4) # cursor down, int
+              84: extended_property_known_size(tag,4) # secondary tip switch, int
+              85: extended_property_known_size(tag,4) # barrel down, int
+              86: extended_property_known_size(tag,4) # tabletpick, int
+              # extended property/>
               87: raster_operation
-              
+              # there can be StylusTipTransform as well
+              # but this is a custom guid so this falls in what's below
+              # are added and we have tags > 100
+              # and this means we are dealing with what follows
               100: custom_guid_tagged
               101: custom_guid_tagged
               102: custom_guid_tagged
@@ -587,7 +618,6 @@ types:
               125: custom_guid_tagged
               126: custom_guid_tagged
               127: custom_guid_tagged
-
               _: skip(0) # because we choose to skip 0, we'd be okay unless we trip on the tag
   skip:
     params:
@@ -598,16 +628,29 @@ types:
       type: u1
       repeat: expr
       repeat-expr: size_jump
+  extended_property_known_size:
+    params:
+    - id: tag
+      type: u1
+    - id: size
+      type: u4
+    seq:
+    - id: unread
+      type: u1
+      repeat: expr
+      repeat-expr: size
+  pen_style:
+    seq:
+    - id: style_unsigned
+      type: multibyte_int_decoded
   transparency:
     seq:
     - id: transparency_value
       type: multibyte_int_decoded
-  roll_rotation:
-    doc: tag 65, extended prop with size from https://source.dot.net/#PresentationCore/MS/Internal/Ink/InkSerializedFormat/ISFTagAndGuidCache.cs,71
+  curvefittingerror:
     seq:
-    - id: unread
-      type: u2
-      doc: size of ushort
+    - id: curve_fitting_error_unsigned
+      type: multibyte_int_decoded
   custom_guid_tagged:
     doc: Corresponds to https://source.dot.net/#PresentationCore/MS/Internal/Ink/InkSerializedFormat/CustomAttributeSerializer.cs,440
      Starts at 100 included(?) https://source.dot.net/#PresentationCore/MS/Internal/Ink/InkSerializedFormat/ISFTagAndGuidCache.cs,175
