@@ -461,7 +461,7 @@ types:
       type: 
         switch-on: tag
         cases:
-          # not checked : 6 for buttons (special case) TODO
+          6: buttons_list
           11: stroke_property_list
           _: add_tag(tag)
   add_tag:
@@ -479,6 +479,16 @@ types:
      - id: tags
        type: multibyte_int_decoded
        repeat: eos
+  buttons_list:
+    seq:
+    - id: nof_buttons
+      type: multibyte_int_decoded
+    - id: button_list
+      type: multibyte_int_decoded
+      repeat: expr
+      repeat-expr: nof_buttons.value
+      doc: These buttons should follow the tags_stroke_desc list
+        So maybe we can change this into an u1 ?
   tag_draw_attrs_table:
     doc: |
       This is a block that can ONLY be decoded once
@@ -853,7 +863,7 @@ types:
 
 enums:
   tag_descriptor_specific:
-    #6: tag_buttons # TODO
+    6: tag_buttons 
     11: stroke_property_list
 
   tag_table:
