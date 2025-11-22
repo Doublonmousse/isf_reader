@@ -30,9 +30,12 @@ logical_array = list_int_to_logical_array(bytes_compressed)
 offset, x_list = inflate_property_data(offset, logical_array, cpoints)
 offset, y_list = inflate_property_data(offset, logical_array, cpoints)
 offset, pressure_data = inflate_property_data(offset, logical_array, cpoints)
-offset, xtilt = inflate_property_data(offset, logical_array, cpoints) # okay
-offset, ytilt = inflate_property_data(offset, logical_array, cpoints) # not okay ?
-offset, timertick = inflate_property_data(offset, logical_array, cpoints) # index 26 ?
+offset, xtilt = inflate_property_data(offset, logical_array, cpoints) 
+offset, ytilt = inflate_property_data(offset, logical_array, cpoints) 
+offset, timertick = inflate_property_data(offset, logical_array, cpoints)
+
+# Then button if they exist
+# https://source.dot.net/#PresentationCore/MS/Internal/Ink/InkSerializedFormat/StrokeSerializer.cs,468
 
 print("final offset : ", offset)
 
@@ -62,8 +65,13 @@ print("okay", ytilt == found_isf_library_ytilt)
 print(timertick)
 # timertick starts at 0 so we need to find somewhere the
 # start timetick ?
+# but where ?
 
 # beware of buttons ?
 #             int intsPerPoint = stylusPointDescription.GetInputArrayLengthPerPoint();
 # then buttons
 #             int buttonCount = stylusPointDescription.ButtonCount;
+
+# then extended properties depending on the stroke descriptor
+# basically this is the info by guid
+# as long as we don't know what that info corresponds to this isn't useful for us
