@@ -9,15 +9,6 @@ isf_file = Path.cwd() / "files_test" / "binary_isf.txt"
 
 read_file = IsfFormat.from_file(isf_file)
 
-# for the flag
-# print("polyline {0:b}".format(0x00000000))
-# print("Fit to curve {0:b}".format(0x00000001))
-# print("subtractive transparency {0:b}".format(0x00000002))
-# print("ignore pressure {0:b}".format(0x00000004))
-# print("antialiased {0:b}".format(0x00000010))
-# print("ignore rotation {0:b}".format(0x00000020))
-# print("ignore angle {0:b}".format(0x00000040))
-
 print(read_file.isf_tag[5].content.cpoints.value) #nof points
 
 # read the unread bytes for this
@@ -25,123 +16,27 @@ bytes_compressed = read_file.isf_tag[5].content.compressed_data
 cpoints = read_file.isf_tag[5].content.cpoints.value
 
 # huffman
-logical_array = list_int_to_logical_array(bytes_compressed)
+# from 
 offset = 0
+logical_array = list_int_to_logical_array(bytes_compressed)
 
+# in order (from the stroke descr): 
+# - x
+# - y
+# - pressure
+# - xtilt
+# - ytilt
+# - timertick
 offset, x_list = inflate_property_data(offset, logical_array, cpoints)
 offset, y_list = inflate_property_data(offset, logical_array, cpoints)
-# now how to get the rest of the info ? (do we have pressure ? We suppose we know we have)
 offset, pressure_data = inflate_property_data(offset, logical_array, cpoints)
+offset, xtilt = inflate_property_data(offset, logical_array, cpoints) # okay
+offset, ytilt = inflate_property_data(offset, logical_array, cpoints) # not okay ?
+offset, timertick = inflate_property_data(offset, logical_array, cpoints) # index 26 ?
+
 print("final offset : ", offset)
 
-
-expected_list = [
-                {
-                    "X": 210.96153259277344,
-                    "Y": 177.30769348144531,
-                    "pressure": 0.281206131
-                },
-                {
-                    "X": 210.84616088867188,
-                    "Y": 179.19230651855469,
-                    "pressure": 0.306109995
-                },
-                {
-                    "X": 210.73077392578125,
-                    "Y": 181.19230651855469,
-                    "pressure": 0.310993105
-                },
-                {
-                    "X": 210.73077392578125,
-                    "Y": 182.92308044433594,
-                    "pressure": 0.310993105
-                },
-                {
-                    "X": 210.69230651855469,
-                    "Y": 184.26922607421875,
-                    "pressure": 0.310993105
-                },
-                {
-                    "X": 210.69230651855469,
-                    "Y": 185.80769348144531,
-                    "pressure": 0.324421644
-                },
-                {
-                    "X": 210.61538696289062,
-                    "Y": 188.80769348144531,
-                    "pressure": 0.339315146
-                },
-                {
-                    "X": 210.57691955566406,
-                    "Y": 194.5,
-                    "pressure": 0.354696929
-                },
-                {
-                    "X": 210.53846740722656,
-                    "Y": 203.23077392578125,
-                    "pressure": 0.370078743
-                },
-                {
-                    "X": 210.61538696289062,
-                    "Y": 213.84616088867188,
-                    "pressure": 0.380821586
-                },
-                {
-                    "X": 210.88461303710938,
-                    "Y": 225,
-                    "pressure": 0.390587807
-                },
-                {
-                    "X": 211.30769348144531,
-                    "Y": 234.80769348144531,
-                    "pressure": 0.400109857
-                },
-                {
-                    "X": 211.76922607421875,
-                    "Y": 242.69230651855469,
-                    "pressure": 0.409631938
-                },
-                {
-                    "X": 212.15383911132812,
-                    "Y": 248.26922607421875,
-                    "pressure": 0.40621376
-                },
-                {
-                    "X": 212.53846740722656,
-                    "Y": 253.07691955566406,
-                    "pressure": 0.400354028
-                },
-                {
-                    "X": 212.96153259277344,
-                    "Y": 257.0384521484375,
-                    "pressure": 0.393761814
-                },
-                {
-                    "X": 213.42308044433594,
-                    "Y": 260.26922607421875,
-                    "pressure": 0.387169629
-                },
-                {
-                    "X": 213.96153259277344,
-                    "Y": 262.61538696289062,
-                    "pressure": 0.363974839
-                },
-                {
-                    "X": 214.42308044433594,
-                    "Y": 264.11538696289062,
-                    "pressure": 0.337606043
-                },
-                {
-                    "X": 214.42308044433594,
-                    "Y": 264.11538696289062,
-                    "pressure": 0.310260624
-                },
-                {
-                    "X": 214.42308044433594,
-                    "Y": 264.11538696289062,
-                    "pressure": 0.183299765
-                }
-            ]
+# comp with libisf qt
 found_isf_library = [5485 ,5482 ,5479 ,5479 ,5478 ,5478 ,5476 ,5475 ,5474 ,5476 ,5483 ,5494 ,5506 ,5516 ,5526 ,5537 ,5549 ,5563 ,5575 ,5575 ,5575 ]
 print("ours:", x_list)
 print("correct: ",found_isf_library)
@@ -150,11 +45,25 @@ found_isf_library_y = [4610 ,4659 ,4711 ,4756 ,4791 ,4831 ,4909 ,5057 ,5284 ,556
 print("ours:", y_list)
 print("correct: ",found_isf_library_y)
 
-## what's left ? 
-# more lists with tilt,rot ? 
+found_isf_library_pressure = [4607 ,5015 ,5095 ,5095 ,5095 ,5315 ,5559 ,5811 ,6063 ,6239 ,6399 ,6555 ,6711 ,6655 ,6559 ,6451 ,6343 ,5963 ,5531 ,5083 ,3003 ]
+print("ours:", pressure_data)
+print("correct: ",found_isf_library_pressure)
+
+found_isf_library_xtilt = [2641 ,2641 ,2641 ,2641 ,2641 ,2641 ,2641 ,2641 ,2641 ,2641 ,2641 ,2641 ,2641 ,2641 ,2641 ,2641 ,2650 ,2658 ,2665 ,2665 ,2673 ]
+print("ours:", xtilt)
+print("correct: ",found_isf_library_xtilt)
+print("okay", xtilt == found_isf_library_xtilt)
+
+found_isf_library_ytilt = [1139 ,1139 ,1139 ,1139 ,1139 ,1139 ,1139 ,1139 ,1139 ,1139 ,1139 ,1139 ,1139 ,1139 ,1139 ,1139 ,1115 ,1090 ,1066 ,1066 ,1040 ]
+print("ours:", ytilt)
+print("correct: ",found_isf_library_ytilt)
+print("okay", ytilt == found_isf_library_ytilt)
+
+print(timertick)
+# timertick starts at 0 so we need to find somewhere the
+# start timetick ?
+
+# beware of buttons ?
 #             int intsPerPoint = stylusPointDescription.GetInputArrayLengthPerPoint();
 # then buttons
 #             int buttonCount = stylusPointDescription.ButtonCount;
-offset, extra = inflate_property_data(offset, logical_array, cpoints=cpoints)
-print(extra)
-# can we get this kind of info as well ?
